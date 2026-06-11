@@ -3,49 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <title>HistoSwiss Karte</title>
+    <!-- Vollständige Leaflet CSS-URL (nicht nur die Domain!) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
         #map { height: 100vh; margin: 0; }
     </style>
 </head>
 <body>
 <div id="map"></div>
+<!-- Vollständige Leaflet JS-URL (nicht nur die Domain!) -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    // Karte initialisieren (muss nach dem Leaflet-Script kommen)
     const map = L.map('map').setView([46.8182, 8.2275], 8);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Direkter Fetch über jsDelivr (CORS-freundlich)
+    // GeoJSON über jsDelivr laden (CORS-freundlich)
     const geojsonUrl = 'https://cdn.jsdelivr.net/gh/PhilippSchaufelberger/HistoSwiss-all-Pois/histoswiss_route_walking.geojson';
 
     fetch(geojsonUrl)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
-            const layer = L.geoJSON(data, {
-                onEachFeature: (feature, layer) => {
-                    const p = feature.properties;
+            L.geoJSON(data, {
+                onEachFeature: (f, layer) => {
+                    const p = f.properties;
                     let popup = `<b>${p.name || 'POI'}</b>`;
                     if (p.distanz_kfr) popup += `<br>📏 Distanz: ${p.distanz_kfr}`;
-                    if (p.image_url && p.image_url !== "") popup += `<br><img src="${p.image_url}" width="200">`;
-                    if (p.target_url && p.target_url !== "") popup += `<br><a href="${p.target_url}" target="_blank">🔗 Quelle</a>`;
+                    if (p.image_url) popup += `<br><img src="${p.image_url}" width="200">`;
+                    if (p.target_url) popup += `<br><a href="${p.target_url}" target="_blank">🔗 Quelle</a>`;
                     layer.bindPopup(popup);
                 }
             }).addTo(map);
-            map.fitBounds(layer.getBounds());
         })
         .catch(error => {
-            console.error('Fehler:', error);
-            document.getElementById('map').innerHTML = `<div style="color:red; padding:20px;">
-                <strong>Fehler beim Laden der Karte:</strong><br>
-                ${error.message}<br><br>
-                Prüfe, ob die Datei unter folgender URL erreichbar ist:<br>
-                <a href="${geojsonUrl}" target="_blank">${geojsonUrl}</a>
-            </div>`;
+            document.getElementById('map').innerHTML = `<div style="color:red; padding:20px;">Fehler: ${error.message}</div>`;
         });
 </script>
 </body>
