@@ -82,8 +82,10 @@
         });
 
         // 4. Riesiges GeoJSON einlesen
-        fetch(geojsonUrl)
-            .then(response => {
+const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
+const geojsonUrl = 'histoswiss_route_walking.geojson';
+
+fetch(proxyUrl + geojsonUrl)            .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP-Fehler ${response.status}: Die Datei "${geojsonUrl}" wurde nicht gefunden.`);
                 }
