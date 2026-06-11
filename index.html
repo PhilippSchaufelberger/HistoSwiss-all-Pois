@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HistoSwiss Interaktive Karte</title>
-    
-    <!-- Leaflet CSS (Muss genau diese vollständige Adresse sein) -->
-    <link rel="stylesheet" href="https://cloudflare.com" />
-    
-    <!-- Leaflet MarkerCluster CSS -->
-    <link rel="stylesheet" href="https://cloudflare.com" />
-    <link rel="stylesheet" href="https://cloudflare.com" />
-    
+
+    <!-- Leaflet CSS (korrekte vollständige URL) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Leaflet MarkerCluster CSS (benötigt beide Dateien) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
     <style>
         html, body {
             height: 100%;
@@ -57,94 +57,99 @@
 </head>
 <body>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <!-- Leaflet JavaScript (Vollständige Adresse zum Programmcode) -->
-    <script src="https://cloudflare.com"></script>
-    
-    <!-- Leaflet MarkerCluster JavaScript -->
-    <script src="https://cloudflare.com"></script>
+<!-- Leaflet JavaScript (korrekte vollständige URL) -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <script>
-        // 1. Karte initialisieren
-        const map = L.map('map', {
-            preferCanvas: true
-        }).setView([46.8182, 8.2275], 8);
+<!-- Leaflet MarkerCluster JavaScript -->
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-        // 2. Hintergrundkarte korrigiert
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap-Mitwirkende'
-        }).addTo(map);
+<script>
+    // Sicherstellen, dass Leaflet geladen ist
+    if (typeof L === 'undefined') {
+        document.getElementById('map').innerHTML = '<div style="padding:20px;background:#f8d7da;color:#721c24;">Fehler: Leaflet konnte nicht geladen werden. Bitte die Konsole prüfen.</div>';
+        throw new Error('Leaflet nicht geladen');
+    }
 
-        // Dateiname Ihrer GeoJSON-Datei im Repository
-        const geojsonUrl = 'histoswiss_route_walking.geojson'; 
+    // 1. Karte initialisieren
+    const map = L.map('map', {
+        preferCanvas: true
+    }).setView([46.8182, 8.2275], 8);
 
-        // 3. Cluster-Gruppe erstellen
-        const markersClusterGroup = L.markerClusterGroup({
-            chunkedLoading: true
-        });
+    // 2. Hintergrundkarte (OpenStreetMap)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap-Mitwirkende'
+    }).addTo(map);
 
-        // 4. Daten laden
-        fetch(geojsonUrl)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP-Fehler ${response.status}: Die Datei "${geojsonUrl}" wurde nicht gefunden.`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                const lineLayer = L.geoJSON(data, {
-                    filter: function(feature) {
-                        return feature.geometry.type === 'LineString';
-                    },
-                    style: function(feature) {
-                        return {
-                            color: feature.properties.stroke || '#0000ff',
-                            weight: feature.properties['stroke-width'] || 4,
-                            opacity: 0.8
-                        };
+    // Dateiname deiner GeoJSON-Datei im selben Verzeichnis
+    const geojsonUrl = 'histoswiss_route_walking.geojson';
+
+    // 3. Cluster-Gruppe erstellen
+    const markersClusterGroup = L.markerClusterGroup({
+        chunkedLoading: true
+    });
+
+    // 4. Daten laden
+    fetch(geojsonUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP-Fehler ${response.status}: Datei "${geojsonUrl}" nicht gefunden.`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Linien zeichnen
+            const lineLayer = L.geoJSON(data, {
+                filter: feature => feature.geometry.type === 'LineString',
+                style: feature => ({
+                    color: feature.properties.stroke || '#0000ff',
+                    weight: feature.properties['stroke-width'] || 4,
+                    opacity: 0.8
+                })
+            }).addTo(map);
+
+            // Punkte mit Popups
+            const pointsLayer = L.geoJSON(data, {
+                filter: feature => feature.geometry.type === 'Point',
+                onEachFeature: (feature, layer) => {
+                    const props = feature.properties;
+                    let popupContent = `<div class="poi-popup">`;
+                    if (props.image_url) {
+                        popupContent += `<img src="${props.image_url}" alt="POI Bild">`;
                     }
-                }).addTo(map);
-
-                const pointsLayer = L.geoJSON(data, {
-                    filter: function(feature) {
-                        return feature.geometry.type === 'Point';
-                    },
-                    onEachFeature: function(feature, layer) {
-                        const props = feature.properties;
-                        let popupContent = `<div class="poi-popup">`;
-                        if (props.image_url) {
-                            popupContent += `<img src="${props.image_url}" alt="POI Bild">`;
-                        }
-                        popupContent += `<h3>${props.name || 'Unbenannter Ort'}</h3>`;
-                        if (props.poi) {
-                            popupContent += `<p><strong>Kategorie:</strong> ${props.poi}</p>`;
-                        }
-                        popupContent += `<p><strong>Distanz zur KFR:</strong> ${props.distanz_kfr || 'Keine Angabe'}</p>`;
-                        if (props.target_url) {
-                            popupContent += `<a class="poi-link" href="${props.target_url}" target="_blank">Zur Quelle (Histopics) →</a>`;
-                        }
-                        popupContent += `</div>`;
-                        layer.bindPopup(popupContent, { maxWidth: 280 });
+                    popupContent += `<h3>${props.name || 'Unbenannter Ort'}</h3>`;
+                    if (props.poi) {
+                        popupContent += `<p><strong>Kategorie:</strong> ${props.poi}</p>`;
                     }
-                });
-
-                markersClusterGroup.addLayer(pointsLayer);
-                map.addLayer(markersClusterGroup);
-
-                if (data.features && data.features.length > 0) {
-                    map.fitBounds(lineLayer.getBounds().isValid() ? lineLayer.getBounds() : markersClusterGroup.getBounds());
+                    popupContent += `<p><strong>Distanz zur KFR:</strong> ${props.distanz_kfr || 'Keine Angabe'}</p>`;
+                    if (props.target_url) {
+                        popupContent += `<a class="poi-link" href="${props.target_url}" target="_blank">Zur Quelle (Histopics) →</a>`;
+                    }
+                    popupContent += `</div>`;
+                    layer.bindPopup(popupContent, { maxWidth: 280 });
                 }
-            })
-            .catch(error => {
-                console.error('Fehler:', error);
-                document.getElementById('map').innerHTML = `
-                    <div style="padding: 30px; background: #fff3f3; color: #a94442; font-family: sans-serif; border: 2px solid #ebccd1; margin: 20px; border-radius: 4px;">
-                        <h2 style="margin-top: 0;">⚠️ Karte konnte nicht geladen werden</h2>
-                        <p><strong>Details:</strong> ${error.message}</p>
-                    </div>`;
             });
-    </script>
+
+            markersClusterGroup.addLayer(pointsLayer);
+            map.addLayer(markersClusterGroup);
+
+            // Kartenausschnitt anpassen
+            if (data.features && data.features.length > 0) {
+                const bounds = lineLayer.getBounds().isValid() ? lineLayer.getBounds() : markersClusterGroup.getBounds();
+                if (bounds.isValid()) map.fitBounds(bounds);
+            }
+        })
+        .catch(error => {
+            console.error('Fehler:', error);
+            document.getElementById('map').innerHTML = `
+                <div style="padding: 30px; background: #fff3f3; color: #a94442; font-family: sans-serif; border: 2px solid #ebccd1; margin: 20px; border-radius: 4px;">
+                    <h2 style="margin-top: 0;">⚠️ Karte konnte nicht geladen werden</h2>
+                    <p><strong>Details:</strong> ${error.message}</p>
+                    <p>Prüfe, ob die Datei <strong>${geojsonUrl}</strong> im gleichen Ordner liegt und gültiges GeoJSON ist.</p>
+                </div>`;
+        });
+</script>
 </body>
 </html>
