@@ -5,7 +5,9 @@
     <title>HistoSwiss Karte</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>#map { height: 100vh; margin: 0; }</style>
+    <style>
+        #map { height: 100vh; margin: 0; }
+    </style>
 </head>
 <body>
 <div id="map"></div>
@@ -15,23 +17,23 @@
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Absoluter Pfad zur GeoJSON-Datei (gleicher Server, daher kein CORS)
-    const geoJsonUrl = '/HistoSwiss-all-Pois/histoswiss_route_walking.geojson';
+    // Direkter Fetch über jsDelivr (CORS-freundlich)
+    const geojsonUrl = 'https://cdn.jsdelivr.net/gh/PhilippSchaufelberger/HistoSwiss-all-Pois/histoswiss_route_walking.geojson';
 
-    fetch(geoJsonUrl)
+    fetch(geojsonUrl)
         .then(response => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return response.json();
         })
         .then(data => {
             const layer = L.geoJSON(data, {
-                onEachFeature: (f, l) => {
-                    const p = f.properties;
+                onEachFeature: (feature, layer) => {
+                    const p = feature.properties;
                     let popup = `<b>${p.name || 'POI'}</b>`;
                     if (p.distanz_kfr) popup += `<br>📏 Distanz: ${p.distanz_kfr}`;
-                    if (p.image_url && p.image_url !== "") popup += `<br><img src="${p.image_url}" width="200" style="margin-top:5px;">`;
+                    if (p.image_url && p.image_url !== "") popup += `<br><img src="${p.image_url}" width="200">`;
                     if (p.target_url && p.target_url !== "") popup += `<br><a href="${p.target_url}" target="_blank">🔗 Quelle</a>`;
-                    l.bindPopup(popup);
+                    layer.bindPopup(popup);
                 }
             }).addTo(map);
             map.fitBounds(layer.getBounds());
@@ -39,10 +41,10 @@
         .catch(error => {
             console.error('Fehler:', error);
             document.getElementById('map').innerHTML = `<div style="color:red; padding:20px;">
-                <strong>Fehler beim Laden der GeoJSON-Datei:</strong><br>
+                <strong>Fehler beim Laden der Karte:</strong><br>
                 ${error.message}<br><br>
                 Prüfe, ob die Datei unter folgender URL erreichbar ist:<br>
-                <a href="${geoJsonUrl}" target="_blank">${geoJsonUrl}</a>
+                <a href="${geojsonUrl}" target="_blank">${geojsonUrl}</a>
             </div>`;
         });
 </script>
