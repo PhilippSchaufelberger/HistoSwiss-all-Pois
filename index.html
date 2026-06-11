@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="https://unpkg.com" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     
     <style>
-        /* Macht die Karte bildschirmfüllend */
         html, body {
             height: 100%;
             margin: 0;
@@ -20,7 +19,6 @@
             width: 100%;
             height: 100%;
         }
-        /* Styling für die Popups innerhalb der Karte */
         .poi-popup img {
             max-width: 260px;
             height: auto;
@@ -61,30 +59,30 @@
     <script src="https://unpkg.com" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script>
-        // 1. Karte initialisieren (zentriert auf die Schweiz)
+        // 1. Karte initialisieren
         const map = L.map('map').setView([46.8182, 8.2275], 8);
 
-        // 2. Hintergrundkarte hinzufügen (OpenStreetMap)
+        // 2. Hintergrundkarte
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap-Mitwirkende'
         }).addTo(map);
 
-        // 3. Pfad zur GeoJSON-Datei im Repository (Relativer Pfad im gleichen Verzeichnis)
+        // 3. DATEINAME PRÜFEN: 
+        // Falls Ihre Datei im Repository anders heisst (z.B. "histoswiss_pois.geojson"), 
+        // passen Sie diesen Namen hier exakt an!
         const geojsonUrl = 'histoswiss_route_walking.geojson'; 
 
-        // 4. GeoJSON-Daten laden und per Leaflet darstellen
+        // 4. Daten laden
         fetch(geojsonUrl)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Fehler beim Laden der GeoJSON-Datei');
+                    throw new Error('Datei nicht gefunden. Prüfen Sie den Dateinamen in Zeile 56!');
                 }
                 return response.json();
             })
             .then(data => {
-                
                 const geojsonLayer = L.geoJSON(data, {
-                    // Styling für Linienzüge (die Route)
                     style: function(feature) {
                         if (feature.geometry.type === 'LineString') {
                             return {
@@ -94,16 +92,13 @@
                             };
                         }
                     },
-                    // Aufbau des Popups für jeden gesetzten Punkt (POI)
                     onEachFeature: function(feature, layer) {
                         if (feature.geometry.type === 'Point') {
                             const props = feature.properties;
-                            
                             let popupContent = `<div class="poi-popup">`;
                             
-                            // Holt das Bild direkt aus der sauberen Daten-Eigenschaft und bettet es ins HTML ein
                             if (props.image_url) {
-                                popupContent += `<img src="${props.image_url}" alt="${props.name || 'POI Bild'}">`;
+                                popupContent += `<img src="${props.image_url}" alt="POI Bild">`;
                             }
                             
                             popupContent += `<h3>${props.name || 'Unbenannter Ort'}</h3>`;
@@ -119,22 +114,20 @@
                             }
                             
                             popupContent += `</div>`;
-                            
                             layer.bindPopup(popupContent, { maxWidth: 280 });
                         }
                     }
                 }).addTo(map);
 
-                // Zoomt die Ansicht automatisch so, dass alle Punkte perfekt im Bild liegen
+                // FEHLER BEHOBEN: Das leere "{ padding: }" wurde entfernt
                 if (data.features && data.features.length > 0) {
-                    map.fitBounds(geojsonLayer.getBounds(), { padding: [30, 30] });
+                    map.fitBounds(geojsonLayer.getBounds()); 
                 }
             })
             .catch(error => {
                 console.error('Fehler:', error);
+                document.getElementById('map').innerHTML = `<div style="padding:20px;color:red;font-weight:bold;">Fehler beim Laden der Daten: ${error.message}</div>`;
             });
-
-        L.Layer.prototype.addToMap = L.Layer.prototype.addTo;
     </script>
 </body>
 </html>
