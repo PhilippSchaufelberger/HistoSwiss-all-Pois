@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HistoSwiss Interaktive Karte</title>
     
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Leaflet CSS von CDNJS (Cloudflare) -->
+    <link rel="stylesheet" href="https://cloudflare.com" />
     
-    <!-- NEU: Leaflet MarkerCluster CSS (Für die Punkt-Zusammenfassung) -->
-    <link rel="stylesheet" href="https://unpkg.com" />
-    <link rel="stylesheet" href="https://unpkg.com" />
+    <!-- Leaflet MarkerCluster CSS von CDNJS (Cloudflare) -->
+    <link rel="stylesheet" href="https://cloudflare.com" />
+    <link rel="stylesheet" href="https://cloudflare.com" />
     
     <style>
         html, body {
@@ -59,36 +59,37 @@
 
     <div id="map"></div>
 
-    <!-- Leaflet JavaScript -->
-    <script src="https://unpkg.com" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Leaflet JavaScript von CDNJS (Cloudflare) -->
+    <script src="https://cloudflare.com"></script>
     
-    <!-- NEU: Leaflet MarkerCluster JavaScript -->
-    <script src="https://unpkg.com"></script>
+    <!-- Leaflet MarkerCluster JavaScript von CDNJS (Cloudflare) -->
+    <script src="https://cloudflare.com"></script>
 
     <script>
-        // 1. Karte initialisieren mit Canvas-Modus für maximale Performance
+        // 1. Karte initialisieren
         const map = L.map('map', {
             preferCanvas: true
         }).setView([46.8182, 8.2275], 8);
 
-        // 2. Hintergrundkarte
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // 2. Hintergrundkarte (Nutzt jetzt ebenfalls einen hochkompatiblen Link)
+        L.tileLayer('https://openstreetmap.org{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap-Mitwirkende'
         }).addTo(map);
 
+        // Dateiname Ihrer GeoJSON-Datei im Repository
         const geojsonUrl = 'histoswiss_route_walking.geojson'; 
 
         // 3. Cluster-Gruppe erstellen
         const markersClusterGroup = L.markerClusterGroup({
-            chunkedLoading: true // Lädt die 20.000 Punkte in kleinen, unmerkbaren Portionen, damit die Seite nicht einfriert
+            chunkedLoading: true
         });
 
-        // 4. Daten laden mit detaillierter Fehleranzeige auf dem Bildschirm
+        // 4. Daten laden
         fetch(geojsonUrl)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error(`HTTP-Fehler ${response.status}: Die Datei "${geojsonUrl}" wurde nicht gefunden. Prüfen Sie die Groß-/Kleinschreibung im GitHub-Repository!`);
+                    throw new Error(`HTTP-Fehler ${response.status}: Die Datei "${geojsonUrl}" wurde nicht gefunden.`);
                 }
                 return response.json();
             })
@@ -138,12 +139,10 @@
             })
             .catch(error => {
                 console.error('Fehler:', error);
-                // Schreibt den Fehler direkt fett und rot auf die Webseite
                 document.getElementById('map').innerHTML = `
                     <div style="padding: 30px; background: #fff3f3; color: #a94442; font-family: sans-serif; border: 2px solid #ebccd1; margin: 20px; border-radius: 4px;">
                         <h2 style="margin-top: 0;">⚠️ Karte konnte nicht geladen werden</h2>
                         <p><strong>Details:</strong> ${error.message}</p>
-                        <p>💡 <em>Hinweis: Wenn dort "HTTP-Fehler 404" steht, stimmt der Dateiname in Ihrer index.html nicht exakt mit dem Namen der Datei auf GitHub überein.</em></p>
                     </div>`;
             });
     </script>
