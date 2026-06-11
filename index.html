@@ -85,24 +85,23 @@
 const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
 const geojsonUrl = 'https://philippschaufelberger.github.io/HistoSwiss-all-Pois/histoswiss_route_walking.geojson';
 
-fetch(proxyUrl + geojsonUrl)            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP-Fehler ${response.status}: Die Datei "${geojsonUrl}" wurde nicht gefunden.`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Linien zeichnen
-                const lineLayer = L.geoJSON(data, {
-                    filter: function(feature) {
-                        return feature.geometry.type === 'LineString';
-                    },
-                    style: function(feature) {
-                        return {
-                            color: feature.properties.stroke || '#0000ff',
-                            weight: feature.properties['stroke-width'] || 4,
-                            opacity: 0.8
-                        };
+fetch(geojsonUrl)
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP-Fehler ${response.status}: ${response.statusText}`);
+    }
+    return response.json();
+  })
+  .then(data => {
+    // ... vorhandener Code
+  })
+  .catch(error => {
+    console.error('Fehler:', error);
+    document.getElementById('map').innerHTML = `<div style="padding:20px;background:#f8d7da;color:#721c24;">
+      <strong>Fehler beim Laden der Karte:</strong> ${error.message}<br>
+      Überprüfe die Konsole für weitere Details.
+    </div>`;
+  });
                     }
                 }).addTo(map);
 
