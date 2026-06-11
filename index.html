@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HistoSwiss Interaktive Karte</title>
     
-    <!-- Leaflet CSS von CDNJS (Cloudflare) -->
+    <!-- Leaflet CSS (Muss genau diese vollständige Adresse sein) -->
     <link rel="stylesheet" href="https://cloudflare.com" />
     
-    <!-- Leaflet MarkerCluster CSS von CDNJS (Cloudflare) -->
+    <!-- Leaflet MarkerCluster CSS -->
     <link rel="stylesheet" href="https://cloudflare.com" />
     <link rel="stylesheet" href="https://cloudflare.com" />
     
@@ -59,10 +59,10 @@
 
     <div id="map"></div>
 
-    <!-- Leaflet JavaScript von CDNJS (Cloudflare) -->
+    <!-- Leaflet JavaScript (Vollständige Adresse zum Programmcode) -->
     <script src="https://cloudflare.com"></script>
     
-    <!-- Leaflet MarkerCluster JavaScript von CDNJS (Cloudflare) -->
+    <!-- Leaflet MarkerCluster JavaScript -->
     <script src="https://cloudflare.com"></script>
 
     <script>
@@ -71,8 +71,8 @@
             preferCanvas: true
         }).setView([46.8182, 8.2275], 8);
 
-        // 2. Hintergrundkarte (Nutzt jetzt ebenfalls einen hochkompatiblen Link)
-        L.tileLayer('https://openstreetmap.org{z}/{x}/{y}.png', {
+        // 2. Hintergrundkarte korrigiert
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© OpenStreetMap-Mitwirkende'
         }).addTo(map);
