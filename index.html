@@ -5,34 +5,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HistoSwiss Interaktive Karte</title>
 
-    <!-- Leaflet CSS -->
+    <!-- Leaflet CSS (vollständige URL) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Leaflet MarkerCluster CSS (vollständige URLs) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 
     <style>
+        /* Macht die Karte bildschirmfüllend */
         html, body {
             height: 100%;
             margin: 0;
             padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
         #map {
             width: 100%;
             height: 100%;
         }
+        /* Styling für die Popups innerhalb der Karte */
         .poi-popup img {
             max-width: 260px;
             height: auto;
             border-radius: 6px;
             margin-bottom: 8px;
+            display: block;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
         }
         .poi-popup h3 {
             margin: 0 0 6px 0;
             font-size: 15px;
+            color: #111;
         }
         .poi-popup p {
             margin: 4px 0;
             font-size: 13px;
+            color: #444;
+            line-height: 1.4;
         }
         .poi-link {
             display: inline-block;
@@ -40,83 +50,77 @@
             color: #0078A8;
             text-decoration: none;
             font-weight: bold;
+            font-size: 13px;
+        }
+        .poi-link:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
 <body>
-<div id="map"></div>
 
-<!-- Leaflet JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <div id="map"></div>
 
-<script>
-    // Prüfen ob Leaflet geladen ist
-    if (typeof L === 'undefined') {
-        document.getElementById('map').innerHTML = '<div style="padding:20px;color:red;">Leaflet konnte nicht geladen werden. Bitte die Konsole prüfen.</div>';
-        throw new Error('Leaflet not loaded');
-    }
+    <!-- Leaflet JavaScript (vollständige URL) -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    // Karte initialisieren
-    const map = L.map('map').setView([46.8182, 8.2275], 8);
+    <!-- Leaflet MarkerCluster JavaScript (vollständige URL) -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-    // Hintergrundkarte
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
+    <script>
+        // 1. Karte initialisieren (zentriert auf die Schweiz)
+        const map = L.map('map').setView([46.8182, 8.2275], 8);
 
-    // GeoJSON laden (relativer Pfad, da Datei im gleichen Verzeichnis)
-    const geojsonUrl = 'histoswiss_route_walking.geojson';
+        // 2. Hintergrundkarte hinzufügen (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap-Mitwirkende'
+        }).addTo(map);
 
-    const markersClusterGroup = L.markerClusterGroup({ chunkedLoading: true });
+        // 3. Pfad zur GeoJSON-Datei im Repository (Relativer Pfad im gleichen Verzeichnis)
+        const geojsonUrl = 'histoswiss_route_walking.geojson';
 
-    fetch(geojsonUrl)
-        .then(response => {
-            if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            return response.json();
-        })
-        .then(data => {
-            // Linien zeichnen
-            const lineLayer = L.geoJSON(data, {
-                filter: f => f.geometry.type === 'LineString',
-                style: f => ({
-                    color: f.properties.stroke || '#0000ff',
-                    weight: f.properties['stroke-width'] || 4,
-                    opacity: 0.8
-                })
-            }).addTo(map);
-
-            // Punkte mit Popups
-            const pointsLayer = L.geoJSON(data, {
-                filter: f => f.geometry.type === 'Point',
-                onEachFeature: (f, layer) => {
-                    const p = f.properties;
-                    let popup = `<div class="poi-popup">`;
-                    if (p.image_url) popup += `<img src="${p.image_url}" alt="Bild">`;
-                    popup += `<h3>${p.name || 'Unbenannt'}</h3>`;
-                    if (p.poi) popup += `<p><strong>Kategorie:</strong> ${p.poi}</p>`;
-                    popup += `<p><strong>Distanz zur KFR:</strong> ${p.distanz_kfr || 'keine Angabe'}</p>`;
-                    if (p.target_url) popup += `<a class="poi-link" href="${p.target_url}" target="_blank">Zur Quelle →</a>`;
-                    popup += `</div>`;
-                    layer.bindPopup(popup, { maxWidth: 280 });
+        // 4. GeoJSON-Daten laden und per Leaflet darstellen
+        fetch(geojsonUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`GeoJSON konnte nicht geladen werden (Status ${response.status})`);
                 }
+                return response.json();
+            })
+            .then(data => {
+                // Alle Punkte (POIs) aus der GeoJSON-Datei zur Karte hinzufügen
+                L.geoJSON(data, {
+                    onEachFeature: function (feature, layer) {
+                        // Eigenschaften des POIs für das Popup vorbereiten
+                        const props = feature.properties;
+                        let popupContent = `<div class="poi-popup">`;
+                        if (props.image_url && props.image_url !== "") {
+                            popupContent += `<img src="${props.image_url}" alt="POI Bild">`;
+                        }
+                        popupContent += `<h3>${props.name || 'Unbenannter Ort'}</h3>`;
+                        if (props.poi) {
+                            popupContent += `<p><strong>Kategorie:</strong> ${props.poi}</p>`;
+                        }
+                        popupContent += `<p><strong>Distanz zur KFR:</strong> ${props.distanz_kfr || 'Keine Angabe'}</p>`;
+                        if (props.target_url && props.target_url !== "") {
+                            popupContent += `<a class="poi-link" href="${props.target_url}" target="_blank">Zur Quelle (Histopics) →</a>`;
+                        }
+                        popupContent += `</div>`;
+                        layer.bindPopup(popupContent, { maxWidth: 280 });
+                    }
+                }).addTo(map);
+            })
+            .catch(error => {
+                console.error('Fehler beim Laden der GeoJSON-Daten:', error);
+                // Fehlermeldung auf der Karte anzeigen
+                document.getElementById('map').innerHTML = `
+                    <div style="padding: 30px; background: #fff3f3; color: #a94442; font-family: sans-serif; border: 2px solid #ebccd1; margin: 20px; border-radius: 4px;">
+                        <h2 style="margin-top: 0;">⚠️ Karte konnte nicht geladen werden</h2>
+                        <p>Die GeoJSON-Datei konnte nicht geladen werden. Bitte stellen Sie sicher, dass die Datei <strong>${geojsonUrl}</strong> im selben Verzeichnis wie diese HTML-Datei existiert.</p>
+                        <p><strong>Technische Details:</strong> ${error.message}</p>
+                    </div>`;
             });
-
-            markersClusterGroup.addLayer(pointsLayer);
-            map.addLayer(markersClusterGroup);
-
-            // Kartenausschnitt anpassen
-            const bounds = lineLayer.getBounds().isValid() ? lineLayer.getBounds() : markersClusterGroup.getBounds();
-            if (bounds.isValid()) map.fitBounds(bounds);
-        })
-        .catch(error => {
-            console.error('Fehler:', error);
-            document.getElementById('map').innerHTML = `<div style="padding:20px;background:#f8d7da;color:#721c24;">
-                <strong>Fehler beim Laden der Karte:</strong> ${error.message}<br>
-                Prüfe, ob die Datei <strong>${geojsonUrl}</strong> im selben Ordner liegt.
-            </div>`;
-        });
-</script>
+    </script>
 </body>
 </html>
