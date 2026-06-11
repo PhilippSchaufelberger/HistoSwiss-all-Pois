@@ -84,16 +84,15 @@
             chunkedLoading: true // Lädt die 20.000 Punkte in kleinen, unmerkbaren Portionen, damit die Seite nicht einfriert
         });
 
-        // 4. Daten laden
+        // 4. Daten laden mit detaillierter Fehleranzeige auf dem Bildschirm
         fetch(geojsonUrl)
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Datei konnte nicht geladen werden.');
+                    throw new Error(`HTTP-Fehler ${response.status}: Die Datei "${geojsonUrl}" wurde nicht gefunden. Prüfen Sie die Groß-/Kleinschreibung im GitHub-Repository!`);
                 }
                 return response.json();
             })
             .then(data => {
-                // Einzelne Layer für Linien (Routen) und Punkte vorbereiten
                 const lineLayer = L.geoJSON(data, {
                     filter: function(feature) {
                         return feature.geometry.type === 'LineString';
@@ -114,40 +113,38 @@
                     onEachFeature: function(feature, layer) {
                         const props = feature.properties;
                         let popupContent = `<div class="poi-popup">`;
-                        
                         if (props.image_url) {
                             popupContent += `<img src="${props.image_url}" alt="POI Bild">`;
                         }
-                        
                         popupContent += `<h3>${props.name || 'Unbenannter Ort'}</h3>`;
-                        
                         if (props.poi) {
                             popupContent += `<p><strong>Kategorie:</strong> ${props.poi}</p>`;
                         }
-                        
                         popupContent += `<p><strong>Distanz zur KFR:</strong> ${props.distanz_kfr || 'Keine Angabe'}</p>`;
-                        
                         if (props.target_url) {
                             popupContent += `<a class="poi-link" href="${props.target_url}" target="_blank">Zur Quelle (Histopics) →</a>`;
                         }
-                        
                         popupContent += `</div>`;
                         layer.bindPopup(popupContent, { maxWidth: 280 });
                     }
                 });
 
-                // Die Punkte in die Cluster-Gruppe einspeisen und auf die Karte bringen
                 markersClusterGroup.addLayer(pointsLayer);
                 map.addLayer(markersClusterGroup);
 
-                // Karte an die Daten anpassen
                 if (data.features && data.features.length > 0) {
                     map.fitBounds(lineLayer.getBounds().isValid() ? lineLayer.getBounds() : markersClusterGroup.getBounds());
                 }
             })
             .catch(error => {
                 console.error('Fehler:', error);
-                document.getElementById('map').innerHTML = `<div style="padding:20px;color:red;font-weight:bold;">Fehler beim Laden der riesigen Datenmenge: ${error.message}</div>`;
+                // Schreibt den Fehler direkt fett und rot auf die Webseite
+                document.getElementById('map').innerHTML = `
+                    <div style="padding: 30px; background: #fff3f3; color: #a94442; font-family: sans-serif; border: 2px solid #ebccd1; margin: 20px; border-radius: 4px;">
+                        <h2 style="margin-top: 0;">⚠️ Karte konnte nicht geladen werden</h2>
+                        <p><strong>Details:</strong> ${error.message}</p>
+                        <p>💡 <em>Hinweis: Wenn dort "HTTP-Fehler 404" steht, stimmt der Dateiname in Ihrer index.html nicht exakt mit dem Namen der Datei auf GitHub überein.</em></p>
+                    </div>`;
             });
     </script>
 </body>
