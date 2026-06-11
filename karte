@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>HistoSwiss Karte</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        #map { height: 100vh; margin: 0; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const map = L.map('map').setView([46.8182, 8.2275], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    const geojsonUrl = 'https://cdn.jsdelivr.net/gh/PhilippSchaufelberger/HistoSwiss-all-Pois/histoswiss_route_walking.geojson';
+
+    fetch(geojsonUrl)
+        .then(r => r.json())
+        .then(data => {
+            L.geoJSON(data, {
+                onEachFeature: (f, l) => {
+                    const p = f.properties;
+                    let popup = `<b>${p.name || 'POI'}</b>`;
+                    if (p.distanz_kfr) popup += `<br>📏 Distanz: ${p.distanz_kfr}`;
+                    if (p.image_url) popup += `<br><img src="${p.image_url}" width="200">`;
+                    if (p.target_url) popup += `<br><a href="${p.target_url}" target="_blank">🔗 Quelle</a>`;
+                    l.bindPopup(popup);
+                }
+            }).addTo(map);
+        })
+        .catch(err => {
+            document.getElementById('map').innerHTML = `<div style="color:red;padding:20px;">Fehler: ${err.message}</div>`;
+        });
+</script>
+</body>
+</html>
