@@ -1,21 +1,134 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <title>HistoSwiss Karte</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-    <style>#map{height:100vh;margin:0}</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>HistoSwiss Route (Leaflet + GeoJSON)</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-sA+e2k3Y2gk9bqYgk3H6Xv+6gqkGkq6v6YvQ2E6vJ4M=" crossorigin=""/>
+
+  <style>
+    html,body { height:100%; margin:0; padding:0; }
+    #map { width:100%; height:100vh; }
+    .legend {
+      background: white;
+      padding: 6px 8px;
+      font: 14px/1.4 "Helvetica Neue", Arial, Helvetica, sans-serif;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      border-radius: 5px;
+    }
+  </style>
 </head>
 <body>
+
 <div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-o9N1jG2fYbV1q6t7mV6t2k3n6Ybq7tG6p7xqj6k9G3I=" crossorigin=""></script>
+
 <script>
-const map = L.map('map').setView([46.8182, 8.2275], 8);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
-fetch('https://cdn.jsdelivr.net/gh/PhilippSchaufelberger/HistoSwiss-all-Pois/histoswiss_route_walking.geojson')
-  .then(r=>r.json())
-  .then(d=>L.geoJSON(d,{onEachFeature:(f,l)=>{let p=f.properties; let pop=`<b>${p.name||'POI'}</b>`; if(p.distanz_kfr) pop+=`<br>📏 Distanz: ${p.distanz_kfr}`; if(p.image_url) pop+=`<br><img src="${p.image_url}" width="200">`; if(p.target_url) pop+=`<br><a href="${p.target_url}" target="_blank">🔗 Quelle</a>`; l.bindPopup(pop);}}).addTo(map))
-  .catch(e=>document.getElementById('map').innerHTML=`<div style="color:red;padding:20px;">Fehler: ${e.message}</div>`);
+  // ---- Konfiguration ----
+  // Raw-GitHub-Link zur GeoJSON (ACHTUNG: raw.githubusercontent.com nutzen)
+  const GEOJSON_URL = 'https://raw.githubusercontent.com/PhilippSchaufelberger/HistoSwiss-all-Pois/main/histoswiss_route_walking.geojson';
+
+  // Basemap-Optionen (OpenStreetMap Standard)
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
+  });
+
+  // Karte initialisieren
+  const map = L.map('map', {
+    center: [46.8, 8.2], // mittig Schweiz; wird später mit GeoJSON angepasst
+    zoom: 8,
+    layers: [osm]
+  });
+
+  // Layer zum Hinzufügen der GeoJSON-Features
+  const geojsonLayer = L.geoJSON(null, {
+    style: function(feature) {
+      // Beispiel: Linien blau, Polygone leicht transparent, Punkte als Marker
+      if (feature.geometry && feature.geometry.type === 'LineString') {
+        return { color: '#1f78b4', weight: 4, opacity: 0.9 };
+      } else if (feature.geometry && feature.geometry.type === 'Polygon') {
+        return { color: '#33a02c', weight: 2, fillColor: '#a6d96a', fillOpacity: 0.4 };
+      } else {
+        return {};
+      }
+    },
+    pointToLayer: function(feature, latlng) {
+      // Punkte als CircleMarker mit Popup
+      return L.circleMarker(latlng, {
+        radius: 6,
+        fillColor: '#ff7f00',
+        color: '#cc5500',
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 0.9
+      });
+    },
+    onEachFeature: function(feature, layer) {
+      // Popup-Inhalt: benutze properties falls vorhanden
+      let popup = '';
+      if (feature.properties) {
+        // Einfache Darstellung: alle properties in einer Tabelle
+        popup += '<div>';
+        popup += '<strong>Feature</strong><br/>';
+        popup += '<table>';
+        for (const k in feature.properties) {
+          if (!Object.prototype.hasOwnProperty.call(feature.properties, k)) continue;
+          const v = feature.properties[k];
+          popup += '<tr><td style="vertical-align:top;font-weight:600;padding-right:8px;">' + k + '</td><td>' + (v === null ? '' : String(v)) + '</td></tr>';
+        }
+        popup += '</table>';
+        popup += '</div>';
+      } else {
+        popup = '<em>Kein properties-Objekt</em>';
+      }
+      layer.bindPopup(popup);
+    }
+  }).addTo(map);
+
+  // Lade die GeoJSON-Datei vom GitHub-Raw-Link
+  fetch(GEOJSON_URL)
+    .then(response => {
+      if (!response.ok) throw new Error('Fehler beim Laden der GeoJSON-Datei: ' + response.statusText);
+      return response.json();
+    })
+    .then(data => {
+      geojsonLayer.addData(data);
+
+      // Zoom auf Layer/Gesamtumfang
+      try {
+        const bounds = geojsonLayer.getBounds();
+        if (bounds.isValid && bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [20,20] });
+        }
+      } catch (e) {
+        // Fallback: falls keine gültigen Bounds (z.B. nur Punkte)
+        console.warn('fitBounds fehlgeschlagen:', e);
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Konnte GeoJSON nicht laden. Prüfen Sie den GEOJSON_URL (Raw GitHub Link) und CORS.');
+    });
+
+  // Kleine Legende (Beispiel)
+  const legend = L.control({ position: 'bottomright' });
+  legend.onAdd = function() {
+    const div = L.DomUtil.create('div', 'legend');
+    div.innerHTML = '<strong>Legende</strong><br/>' +
+                    '<span style="display:inline-block;width:12px;height:12px;background:#1f78b4;margin-right:6px;border:1px solid #000;"></span> Route<br/>' +
+                    '<span style="display:inline-block;width:12px;height:12px;background:#ff7f00;margin-right:6px;border:1px solid #000;"></span> POI';
+    return div;
+  };
+  legend.addTo(map);
+
 </script>
+
 </body>
 </html>
