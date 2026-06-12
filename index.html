@@ -1,130 +1,77 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>HistoSwiss Route (Leaflet + GeoJSON)</title>
-
-  <!-- Leaflet CSS -->
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css" /> <style>
-html,body { height:100%; margin:0; padding:0; }
-#map { width:100%; height:100vh; }
-.legend {
-background: white;
-padding: 6px 8px;
-font: 14px/1.4 "Helvetica Neue", Arial, Helvetica, sans-serif;
-box-shadow: 0 0 15px rgba(0,0,0,0.2);
-border-radius: 5px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>HistoSwiss – Karte</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+    <style>#map{height:100vh;margin:0}</style>
 </head>
 <body>
-
 <div id="map"></div>
-
-<!-- Leaflet JS -->
-<script src="vendor/leaflet/leaflet.js"></script>  integrity="sha256-o9N1jG2fYbV1q6t7mV6t2k3n6Ybq7tG6p7xqj6k9G3I=" crossorigin=""></script>
-
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
-  // ---- Konfiguration ----
-  // Raw-GitHub-Link zur GeoJSON (ACHTUNG: raw.githubusercontent.com nutzen)
-  const GEOJSON_URL = 'https://raw.githubusercontent.com/PhilippSchaufelberger/HistoSwiss-all-Pois/main/histoswiss_route_walking.geojson';
+const map = L.map('map').setView([46.8182, 8.2275], 8);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
 
-  // Basemap-Optionen (OpenStreetMap Standard)
-  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap contributors'
-  });
+const markers = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 80 });
+const geojsonUrl = 'https://philippschaufelberger.github.io/HistoSwiss-all-Pois/histoswiss_all.geojson';
 
-  // Karte initialisieren
-  const map = L.map('map', {
-    center: [46.8, 8.2], // mittig Schweiz; wird später mit GeoJSON angepasst
-    zoom: 8,
-    layers: [osm]
-  });
-
-  // Layer zum Hinzufügen der GeoJSON-Features
-  const geojsonLayer = L.geoJSON(null, {
-    style: function(feature) {
-      // Beispiel: Linien blau, Polygone leicht transparent, Punkte als Marker
-      if (feature.geometry && feature.geometry.type === 'LineString') {
-        return { color: '#1f78b4', weight: 4, opacity: 0.9 };
-      } else if (feature.geometry && feature.geometry.type === 'Polygon') {
-        return { color: '#33a02c', weight: 2, fillColor: '#a6d96a', fillOpacity: 0.4 };
-      } else {
-        return {};
-      }
-    },
-    pointToLayer: function(feature, latlng) {
-      // Punkte als CircleMarker mit Popup
-      return L.circleMarker(latlng, {
-        radius: 6,
-        fillColor: '#ff7f00',
-        color: '#cc5500',
-        weight: 1,
-        opacity: 1,
-        fillOpacity: 0.9
-      });
-    },
-    onEachFeature: function(feature, layer) {
-      // Popup-Inhalt: benutze properties falls vorhanden
-      let popup = '';
-      if (feature.properties) {
-        // Einfache Darstellung: alle properties in einer Tabelle
-        popup += '<div>';
-        popup += '<strong>Feature</strong><br/>';
-        popup += '<table>';
-        for (const k in feature.properties) {
-          if (!Object.prototype.hasOwnProperty.call(feature.properties, k)) continue;
-          const v = feature.properties[k];
-          popup += '<tr><td style="vertical-align:top;font-weight:600;padding-right:8px;">' + k + '</td><td>' + (v === null ? '' : String(v)) + '</td></tr>';
+fetch(geojsonUrl)
+  .then(response => response.json())
+  .then(data => {
+    L.geoJSON(data, {
+      pointToLayer: (f, latlng) => L.marker(latlng),
+      onEachFeature: (f, l) => {
+        const p = f.properties;
+        const lat = l.getLatLng().lat;
+        const lng = l.getLatLng().lng;
+        let popup = `<b>${p.name || 'POI'}</b>`;
+        
+        // Bild
+        if (p.image_url && p.image_url.trim() !== "") {
+          popup += `<br><img src="${p.image_url}" width="250">`;
         }
-        popup += '</table>';
-        popup += '</div>';
-      } else {
-        popup = '<em>Kein properties-Objekt</em>';
-      }
-      layer.bindPopup(popup);
-    }
-  }).addTo(map);
-
-  // Lade die GeoJSON-Datei vom GitHub-Raw-Link
-  fetch(GEOJSON_URL)
-    .then(response => {
-      if (!response.ok) throw new Error('Fehler beim Laden der GeoJSON-Datei: ' + response.statusText);
-      return response.json();
-    })
-    .then(data => {
-      geojsonLayer.addData(data);
-
-      // Zoom auf Layer/Gesamtumfang
-      try {
-        const bounds = geojsonLayer.getBounds();
-        if (bounds.isValid && bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [20,20] });
+        
+        // Liste vorbereiten
+        const items = [];
+        
+        // Distanz
+        if (p.distanz_kfr && p.distanz_kfr !== "" && p.distanz_kfr !== "Keine Angabe") {
+          items.push(`📏 Distanz zur KFR: ${p.distanz_kfr}`);
         }
-      } catch (e) {
-        // Fallback: falls keine gültigen Bounds (z.B. nur Punkte)
-        console.warn('fitBounds fehlgeschlagen:', e);
+        
+        // Quelle (target_url)
+        if (p.target_url && p.target_url.trim() !== "") {
+          items.push(`<a href="${p.target_url}" target="_blank">🔗 HistoPics / HistoSwiss</a>`);
+        }
+        
+        // Formular (aus form_id)
+        if (p.form_id && p.form_id.trim() !== "") {
+          const formUrl = "https://forms.office.com/Pages/ResponsePage.aspx?id=oee1AwnLF0SeGsaGtECyxSYqCNTH3KVCvNcgoFLg2XZUMTZFRlJWRkVXQVZUOE9EVUs4MUc1NFZWUS4u&rf7c4e2f2d7d7438c8efbe1b915a05a0c=" + p.form_id;
+          items.push(`<a href="${formUrl}" target="_blank">📝 Zur Formseingabe</a>`);
+        }
+        
+        // Google Maps Link (neu)
+        const googleMapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+        items.push(`<a href="${googleMapsUrl}" target="_blank">🗺️ In Google Maps öffnen</a>`);
+        
+        // Liste einfügen
+        if (items.length > 0) {
+          popup += "<br><ul><li>" + items.join("</li><li>") + "</li></ul>";
+        }
+        
+        l.bindPopup(popup);
       }
-    })
-    .catch(err => {
-      console.error(err);
-      alert('Konnte GeoJSON nicht laden. Prüfen Sie den GEOJSON_URL (Raw GitHub Link) und CORS.');
-    });
-
-  // Kleine Legende (Beispiel)
-  const legend = L.control({ position: 'bottomright' });
-  legend.onAdd = function() {
-    const div = L.DomUtil.create('div', 'legend');
-    div.innerHTML = '<strong>Legende</strong><br/>' +
-                    '<span style="display:inline-block;width:12px;height:12px;background:#1f78b4;margin-right:6px;border:1px solid #000;"></span> Route<br/>' +
-                    '<span style="display:inline-block;width:12px;height:12px;background:#ff7f00;margin-right:6px;border:1px solid #000;"></span> POI';
-    return div;
-  };
-  legend.addTo(map);
-
+    }).eachLayer(layer => markers.addLayer(layer));
+    map.addLayer(markers);
+    map.fitBounds(markers.getBounds());
+  })
+  .catch(error => {
+    document.getElementById('map').innerHTML = `<div style="color:red;padding:20px;">Fehler: ${error.message}</div>`;
+  });
 </script>
-
 </body>
 </html>
